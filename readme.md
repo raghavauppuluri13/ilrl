@@ -2,6 +2,7 @@
 
 ## Pre-requisites
 - [poetry](https://python-poetry.org/docs/#installing-with-the-official-installer)
+- [mujoco](https://mujoco.readthedocs.io/en/stable/programming/index.html#getting-started)
 
 ## Quickstart
 

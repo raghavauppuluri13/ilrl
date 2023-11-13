@@ -9,8 +9,8 @@
 1. Install 
 
 ```
-git clone https://github.com/raghavauppuluri13/ILRL
-cd ILRL
+git clone https://github.com/raghavauppuluri13/ilrl
+cd ilrl
 poetry install
 poetry shell
 ```

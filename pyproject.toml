@@ -9,6 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.8"
 robohive = "^0.6.0"
+hydra-core = "^0.11"
 
 
 [build-system]

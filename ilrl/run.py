@@ -2,6 +2,11 @@ import gym
 import click
 from gym.envs.registration import register
 import os
+import torch
+import pickle
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_util import make_vec_env
+from actor import DiagGaussianActor
 
 DESC = """
 TUTORIAL: Arm+Gripper tele-op using input devices (keyboard / spacenav) \n
@@ -84,6 +89,13 @@ import gym
     help="seed for generating environment instances",
     default=123,
 )
+@click.option(
+    "-m",
+    "--model_path",
+    type=str,
+    help="path to model to run",
+    default=None,
+)
 def main(
     env_name,
     env_args,
@@ -96,6 +108,7 @@ def main(
     camera,
     render,
     seed,
+    model_path
 ):
     # seed and load environments
     np.random.seed(seed)
@@ -113,7 +126,13 @@ def main(
     elif output_format == "RoboSet":
         trace = RoboSet_Trace("TeleOp Trajectories")
 
+    model = None
+    if model_path != None:
+        model = DiagGaussianActor(38, 28, 1024, 2, [-5, 2])
+        model.load_state_dict(torch.load(model_path))
+    
     # Collect rollouts
+    total_rwds = 0
     for i_rollout in range(num_rollouts):
         # start a new rollout
         print("rollout {} start".format(i_rollout))
@@ -127,17 +146,20 @@ def main(
         # recover init state
         obs, rwd, done, env_info = env.forward()
         act = np.zeros(env.action_space.shape)
+        rwds = 0
 
         # start rolling out
         for i_step in range(horizon + 1):
             # nan actions for last log entry
-            random_act = np.random.uniform(env.action_space.shape)
+            policy_act = np.random.uniform(env.action_space.shape)
+            if model != None:
+                policy_act = model(torch.from_numpy(obs.astype(np.float32))).mean.detach().numpy()
 
             # log values at time=t ----------------------------------
             datum_dict = dict(
                 time=env.time,
                 observations=obs,
-                actions=act.copy(),
+                actions=policy_act,
                 rewards=rwd,
                 env_infos=env_info,
                 done=done,
@@ -147,9 +169,12 @@ def main(
 
             # step env using action from t=>t+1 ----------------------
             if i_step < horizon:  # incase last actions (nans) can cause issues in step
-                obs, rwd, done, env_info = env.step(act)
+                obs, rwd, done, env_info = env.step(policy_act)
+                rwds += rwd
         print("rollout {} end".format(i_rollout))
-
+        print("Reward:", rwds)
+        total_rwds += rwds
+    print("Average Reward:", total_rwds / num_rollouts)
     # save and close
     env.close()
     trace.save(output, verify_length=True)

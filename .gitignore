@@ -1,0 +1,4 @@
+__pycache__/
+exp/
+MUJOCO_LOG.TXT
+.h5
